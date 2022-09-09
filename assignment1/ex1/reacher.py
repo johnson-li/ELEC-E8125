@@ -65,9 +65,10 @@ class ReacherEnv(core.Env):
         # TODO: Task 3: Implement and test two reward functions
         ########## Your code starts here ##########
         # A dummy reward, replace it with yours.
-        return 1 
+        return 1 if self.get_terminal_state() else 0
+        # return 1 if action == 1 else 0
 
-        ########## Your codes end here ########## 
+        ########## Your codes end here ##########
 
     def get_cartesian_pos(self, state):
         ee_pos = np.zeros(2)
@@ -101,7 +102,7 @@ class ReacherEnv(core.Env):
 
         # Compute the reward
         reward = self.get_reward(self.prev_state, a, self.state)
-        
+
         self.renderer.render_step()
 
         return (self.state, reward, terminal, {})
@@ -112,8 +113,8 @@ class ReacherEnv(core.Env):
         return terminal
 
     def render(self):
-        return self.renderer.get_renders() 
-    
+        return self.renderer.get_renders()
+
     def _render_frame(self, mode='human'):
         self.metadata["render_modes"]
 
@@ -150,7 +151,7 @@ class ReacherEnv(core.Env):
         if s is None:
             return None
 
-        p1 = [-self.link_length_1 *cos(s[0]) * scale, 
+        p1 = [-self.link_length_1 *cos(s[0]) * scale,
             self.link_length_1 * sin(s[0]) * scale]
 
         p2 = [p1[0] - self.link_length_2 * cos(s[0] + s[1]) * scale,

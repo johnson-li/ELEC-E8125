@@ -1,0 +1,27 @@
+{
+    "os": "Linux-4.15.0-191-generic-x86_64-with-glibc2.17",
+    "python": "3.8.13",
+    "heartbeatAt": "2022-09-08T16:10:23.508676",
+    "startedAt": "2022-09-08T16:10:22.928104",
+    "docker": null,
+    "gpu": "Quadro P5000",
+    "gpu_count": 2,
+    "cpu_count": 12,
+    "cuda": null,
+    "args": [
+        "seed=1",
+        "max_episode_steps=100"
+    ],
+    "state": "running",
+    "program": "train.py",
+    "codePath": "assignment1/ex1/train.py",
+    "git": {
+        "remote": "git@github.com:johnson-li/ELEC-E8125.git",
+        "commit": "f8307ed85996967cc390cd04d8212b5161723d11"
+    },
+    "email": "johnsonli1993@gmail.com",
+    "root": "/home/lix16/Workspace/ELEC-E8125",
+    "host": "5g-mobix",
+    "username": "lix16",
+    "executable": "/home/lix16/miniconda3/envs/e8125/bin/python"
+}
