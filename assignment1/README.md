@@ -23,14 +23,13 @@ The `common` folder includes a set of helper functions/classes that are useful i
 We use [hydra](https://hydra.cc/) to manage the configuration for each exercise, and all parameters are located under the `cfg` folder. We use [wandb](https://docs.wandb.ai/) to manage experiments. Furthermore, we use jupyter notebook for analysis and visualization.
 
 ## How to develop remotely
-We recommend write the code using VS Code and run everything on a remote machine offered by Aalto University (the full list is [here](https://www.aalto.fi/en/services/linux-computer-names-in-it-classrooms)), especially if you are using a non-GPU or a Windows machine. For Mac or Linux users, the setting of VS Code can be found [here](https://yi-zhao.notion.site/Setup-for-remote-work-68fdbbab0e5c4182a95d89aff23cb0ce). For Windows users, this [link](https://code.visualstudio.com/docs/remote/wsl) might be useful. You should be able to open and run `.ipynb` (for Jupyter Notebook) out of box, but here is the [details](https://code.visualstudio.com/docs/datascience/jupyter-notebooks).
+We recommend write the code using VS Code and run everything on a remote machine offered by Aalto University (the full list is [here](https://www.aalto.fi/en/services/linux-computer-names-in-it-classrooms)), especially if you are using a non-GPU or a Windows machine. For Mac or Linux users, the setting of SSH and VS Code can be found [here](https://yi-zhao.notion.site/How-to-set-up-a-remote-machine-d31e799fe2014fc7b806a29f54c71f1b). For Windows users, this [link](https://code.visualstudio.com/docs/remote/wsl) might be useful. You should be able to open and run `.ipynb` (for Jupyter Notebook) out of box, but here is the [details](https://code.visualstudio.com/docs/datascience/jupyter-notebooks).
 
 ## How to run the code
-Suppose you have successfully set up the VS Code and can connect to a remote GPU machine, you can create the running environment by:
-1. `cd` to the `rl_course` folder and create a virtual python environment via `virtualenv venv`. To activate this environment, use `source ./venv/bin/activate` and use `deactivate` to deactivate the environment.
-2. Activate the veitual environment and install dependenices using `pip install -r requirements.txt`.(it is for Linux GPU machines, if you use a non-GPU machine, you need to remove the cu113.)
-3. Wandb login: `wandb login`
-4. Run the code: `cd` to the corresponding exercise foloder, such as `cd ex1`, and run, e.g. `python3 train.py save_video=true save_logging=true use_wandb=true`
+Suppose you have successfully set up the VS Code and can connect to a remote GPU machine, and create the vitrual environment. You can run the code by:
+1. `cd` to the `rl_course` folder and activate the created vritual enviroment by `source ./venv/bin/activate` (use `deactivate` to deactivate the environment).
+2. Wandb login: `wandb login`
+3. Run the code: `cd` to the corresponding exercise foloder, such as `cd ex1`, and run, e.g. `python3 train.py save_video=true save_logging=true use_wandb=true`
 
 ## How to export plot from wandb
 Export a plot from wandb is easy:
@@ -45,7 +44,7 @@ Export a plot from wandb is easy:
 
 ## How to submit
 Exercises must be done **individually**. We will use **TurnItIn** to verify this. You can work with peers on the
-solutions but the solution you provide must be your own work. It is advised to ask questions in the [Slack channel](https://join.slack.com/t/elece8125rein-0pe1068/shared_invite/zt-1eu9z6c1v-c_LzEg8nFovSdx5Vd99zLg) and attend to the exercise
+solutions but the solution you provide must be your own work. It is advised to ask questions in the [Slack channel](https://join.slack.com/t/elece8125rein-0pe1068/shared_invite/zt-1fjpcfg12-UY9UNhgFOF8GxiGp7~olew) and attend to the exercise
 sessions as TAs will assist you on the solutions. It's recommended to use the **Slack channel** as the main place to ask questions since other people might ask the same questions. But **avoid sharing your code** in the channel, if the code sharing is needed for your questions, you can have a private discussion with TAs or attend the exercise session.
 
 A good exercise submission report should meet the following criterias:

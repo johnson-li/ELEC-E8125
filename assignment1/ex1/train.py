@@ -15,13 +15,13 @@ from common import helper as h
 from common import logger as logger
 
 import warnings
-warnings.filterwarnings("ignore", category=UserWarning) 
-warnings.filterwarnings("ignore", category=DeprecationWarning) 
+warnings.filterwarnings("ignore", category=UserWarning)
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 
 # Policy training function
 def train(agent, env, min_update_samples=2000):
-    # Run actual training        
+    # Run actual training
     reward_sum, timesteps, num_updates = 0, 0, 0
     done = False
 
@@ -70,13 +70,14 @@ def test(agent, env, episodes):
             # (evaluation=True makes the agent always return what it thinks to be
             # the best action - there is no exploration at this point)
             action, _ = agent.get_action(observation, evaluation=True)
+            print(action)
             observation, reward, done, info = env.step(action)
 
             test_reward += reward
             test_len += 1
         total_test_reward += test_reward
         total_test_len += test_len
-        print("Test ep reward:", test_reward)
+        print("Test ep reward:", test_reward, ", len: ", test_len)
     print("Average test reward:", total_test_reward/episodes, "episode length:", total_test_len/episodes)
 
 
@@ -85,13 +86,13 @@ def test(agent, env, episodes):
 def main(cfg):
     # sed seed
     h.set_seed(cfg.seed)
-    
+
     run_id = int(time.time())
 
     # create folders if needed
     work_dir = Path().cwd()/'results'
     if cfg.save_model: h.make_dir(work_dir/"model")
-    if cfg.save_logging: 
+    if cfg.save_logging:
         h.make_dir(work_dir/"logging")
         L = logger.Logger() # create a simple logger to record stats
 
@@ -105,7 +106,7 @@ def main(cfg):
 
     # create env
     # TODO: Task 1: Train with 100 steps, test with 1000 steps
-    env = gym.make(cfg.env_name, 
+    env = gym.make(cfg.env_name,
                     max_episode_steps=cfg.max_episode_steps,
                     render_mode='rgb_array')
     # seeding the environemnt
@@ -124,7 +125,7 @@ def main(cfg):
                                         episode_trigger=lambda x: x % ep_trigger == 0,
                                         name_prefix=cfg.exp_name) # save video every 50 episode
 
-    
+
     # Get dimensionalities of actions and observations
     action_space_dim = h.get_space_dim(env.action_space)
     observation_space_dim = h.get_space_dim(env.observation_space)
@@ -149,8 +150,8 @@ def main(cfg):
 
             if not cfg.silent:
                 print(f"Episode {ep} finished. Total reward: {train_info['ep_reward']} ({train_info['timesteps']} timesteps)")
-            
-            if cfg.use_wandb: 
+
+            if cfg.use_wandb:
                 wandb.log(train_info)
             if cfg.save_logging:
                 L.log(**train_info)
@@ -160,7 +161,7 @@ def main(cfg):
             model_path = work_dir/'model'/f'{cfg.env_name}_params.pt'
             torch.save(policy.state_dict(), model_path)
             print("Model saved to", model_path)
-        
+
         if cfg.save_logging:
             logging_path = work_dir/'logging'/f'{cfg.env_name}_logging.pkl'
             L.save(logging_path)
@@ -171,11 +172,11 @@ def main(cfg):
         if cfg.model_path == 'default':
             cfg.model_path = work_dir/'model'/f'{cfg.env_name}_params.pt'
         print("Loading model from", cfg.model_path, "...")
-        
+
         # load model
         state_dict = torch.load(cfg.model_path)
         policy.load_state_dict(state_dict)
-        
+
         print("Testing...")
         test(agent, env, 10)
 
