@@ -20,7 +20,7 @@ def init_q_table(observation_space, action_dim, discr, bool_position=None, init_
     low_values = observation_space.low
     axis = []
     for idx, (low_val, high_val) in enumerate(zip(low_values, high_values)):
-        # here to avoid inf boundary, we truncate the value to [-4, 4] 
+        # here to avoid inf boundary, we truncate the value to [-4, 4]
         if low_val < -1e10: low_val = -4
         if high_val > 1e10: high_val = 4
 
@@ -35,7 +35,7 @@ def init_q_table(observation_space, action_dim, discr, bool_position=None, init_
 
 
 def get_table_idx(state, axis):
-    """ Give a state, discrete it and return the index in each dimension (axis). 
+    """ Give a state, discrete it and return the index in each dimension (axis).
     With the returned index, you can access q(s,.) with q_table[idx]."""
     def _get_ax_idx(ax, value):
         return np.argmin(np.abs(ax - value))
@@ -47,17 +47,25 @@ def get_action(state, q_axis, q_table, epsilon=0.0):
 
     # TODO: Implement epsilon-greedy
     ########## Your code starts here ##########
-    pass
+    p = np.random.random()
+    if p < epsilon:
+        return np.random.choice(q_table.shape[-1])
+    else:
+        idx = get_table_idx(state, q_axis)
+        return np.argmax(q_table[idx])
 
     ########## Your code ends here #########
 
 
 def update_q_value(old_state, action, new_state, gamma, reward, done, alpha, q_axis, q_table):
     # TODO: Task 1.1, update q value
-    
+
     old_table_idx = get_table_idx(old_state, q_axis) # idx of q(s_old, *)
-    new_table_idx = get_table_idx(new_state, q_axis) # idx of q(s_new, *)   
+    new_table_idx = get_table_idx(new_state, q_axis) # idx of q(s_new, *)
     ########## Your code starts here ##########
+
+    val = q_table[old_table_idx][action] + alpha * (reward + gamma * max(q_table[new_table_idx]) - q_table[old_table_idx][action])
+    q_table[old_table_idx][action] = val
 
     ########### Your code ends here ##########
     return q_table
@@ -72,7 +80,7 @@ def main(cfg):
     run_id = int(time.time())
     # create folders if needed
     work_dir = Path().cwd()/'results'/f'{cfg.env_name}'
-    if cfg.save_logging: 
+    if cfg.save_logging:
         L = logger.Logger() # create a simple logger to record stats
 
     # use wandb to store stats
@@ -91,7 +99,7 @@ def main(cfg):
                                         name_prefix=cfg.exp_name) # save video for testing every 5 episodes
 
     # init q_table with zeros
-    q_axis, q_table = init_q_table(env.observation_space, 
+    q_axis, q_table = init_q_table(env.observation_space,
         env.action_space.n, cfg.discr, bool_position=cfg.bool_position, init_q=cfg.initial_q)
 
     # begin training and testing
@@ -99,24 +107,24 @@ def main(cfg):
     for ep in range(cfg.train_episodes + 1):
         # set epsilon value
         if cfg.epsilon == 'glie':
-            epsilon = cfg.glie_b / (cfg.glie_b + ep)  
+            epsilon = cfg.glie_b / (cfg.glie_b + ep)
         elif isinstance(cfg.epsilon, (int, float)):
             epsilon = cfg.epsilon
-        else: 
+        else:
             raise ValueError
 
         state, done, ep_reward, timesteps = env.reset(), False, 0, 0
         while not done:
-            action = get_action(state, q_axis, q_table, epsilon=epsilon) 
+            action = get_action(state, q_axis, q_table, epsilon=epsilon)
             new_state, reward, done, _ = env.step(action)
 
             q_table = update_q_value(state, action, new_state, cfg.gamma, reward, done, cfg.alpha,
                                         q_axis, q_table)
-    
+
             state = new_state
             ep_reward += reward
             timesteps += 1
-        
+
         ep_reward_deque.append(ep_reward)
         info = {
             'episode': ep,
