@@ -111,7 +111,11 @@ class RBFAgent(object):
         # featurize the state and next_state
         f_state = self.featurize(batch.state)
         f_next_state = self.featurize(batch.next_state)
-        q_tar = np.array([q.predict(f_state) for q in self.q_functions]).transpose()
+        actions = batch.action
+        rewards = batch.reward
+#         q_tar = np.array([q.predict(f_state) for q in self.q_functions]).transpose()
+#         q_tar = np.array([rewards[] + self.gamma * np.max([q.predict(f_next_state) for q in self.q_functions]) for i in actions])
+        q_tar = rewards + np.max(np.array([q.predict(f_next_state) for q in self.q_functions]), axis=0)
         q_tar[np.where(batch.not_done < 1)[0]] = 0
 
 
@@ -124,7 +128,7 @@ class RBFAgent(object):
             # If a not present in the batch, skip and move to the next action
             if np.any(idx):
                 act_states = f_state[idx]
-                act_targets = q_tar[idx, a]
+                act_targets = q_tar[idx]
 
                 # Perform a single SGD step on the Q-function params to update the q_function corresponding to action a
                 self.q_functions[a].partial_fit(act_states, act_targets)

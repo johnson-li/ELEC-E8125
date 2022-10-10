@@ -58,18 +58,18 @@ class DQNAgent(object):
         #           you can access the value be batch.<name>, e.g, batch.state
         #        4. check torch.nn.utils.clip_grad_norm_() to know how to clip grad norm
         #        5. You can go throught the PyTorch Tutorial given on MyCourses if you are not familiar with it.
-        state_batch = torch.cat([batch.state])
-        next_state_batch = torch.cat([batch.next_state])
-        action_batch = torch.cat([batch.action])
-        reward_batch = torch.cat([batch.reward])
-        not_done_batch = torch.cat([batch.not_done])
+        state_batch = batch.state
+        next_state_batch = batch.next_state
+        action_batch = batch.action
+        reward_batch = batch.reward
+        not_done_batch = batch.not_done
         non_final_mask = not_done_batch.nonzero()
         non_final_next_states = next_state_batch[non_final_mask]
+        
         state_action_values = self.policy_net(state_batch).gather(1, action_batch.long())
         next_state_values = torch.zeros(self.batch_size, device=device)
-        next_state_values[non_final_mask] = self.target_net(non_final_next_states).max(1)[0].detach()
-        expected_state_action_values = (next_state_values * self.gamma) + reward_batch
-        criterion = nn.SmoothL1Loss()
+        next_state_values[non_final_mask] = torch.max(self.target_net(non_final_next_states), 1)[0].detach()
+        expected_state_action_values = next_state_values * self.gamma + reward_batch
         
 #         calculate the q(s,a)
         qs = state_action_values
@@ -78,16 +78,15 @@ class DQNAgent(object):
         q_tar = expected_state_action_values
 
         #calculate the loss 
-        loss = criterion(state_action_values, expected_state_action_values.unsqueeze(1))
+#         criterion = nn.SmoothL1Loss()
+#         loss = criterion(qs, q_tar)
+        loss = torch.pow(qs - q_tar, 2).sum() / 2
 
         
         # clip grad norm and perform the optimization step
-
         self.optimizer.zero_grad()
         loss.backward()
-        for param in self.policy_net.parameters():
-            nn.utils.clip_grad_norm_(param, self.grad_clip_norm)
-#             param.grad.data.clamp_(-1, 1)
+        nn.utils.clip_grad_norm_(self.policy_net.parameters(), self.grad_clip_norm)
         self.optimizer.step()
         ########## You code ends here #########
 
@@ -104,9 +103,9 @@ class DQNAgent(object):
         # TODO:  Task 3: implement epsilon-greedy action selection
         ########## You code starts here #########
         sample = np.random.random()
-        if sample > epsilon:
+        if sample >= epsilon:
             with torch.no_grad():
-                return torch.argmax(self.policy_net(torch.tensor(state, device=device))).item()
+                return torch.argmax(self.target_net(torch.tensor(state, device=device))).item()
         else:
             return random.randrange(self.n_actions)
 
