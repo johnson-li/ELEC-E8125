@@ -53,11 +53,11 @@ class RBFAgent(object):
         
         # TODO: Task 1, choose which feature to use. 
         # Manual features, Task 1a 
-        return np.concatenate((state, np.abs(state)), axis=1)
+#         return np.concatenate((state, np.abs(state)), axis=1)
         
         # RBF features, Task 1b 
         # map a state to a higher dimension (100+80+50)
-        # return self.featurizer.transform(self.scaler.transform(state)) 
+        return self.featurizer.transform(self.scaler.transform(state)) 
 
     def get_action(self, state, epsilon=0.0):
         # TODO: Task 1: Implement epsilon-greedy policy
@@ -65,10 +65,16 @@ class RBFAgent(object):
         # Hints:
         # 1. self.q_functions is a list which defines a q function for each action dimension
         # 2. for each q function, use predict(feature) to obtain the q value
-        pass
+        feature = self.featurize(state)
+        q_values = np.array([q.predict(feature) for q in self.q_functions]).transpose()
 
+        res = np.argmax(q_values, axis=-1)
+        rand = np.random.rand(res.shape[0])
+        if len(rand) > 0:
+            rand_indexes = np.where(rand < epsilon)[0]
+            res[rand_indexes] = np.random.randint(self.num_actions, size=rand_indexes.shape)
+        return res
         
-
         ########## Your code ends here #########
 
 
@@ -103,9 +109,10 @@ class RBFAgent(object):
         # 4. remember to use not_done to mask out the q values at terminal states (treat them as 0)
 
         # featurize the state and next_state
-        f_state = 0 
-        f_next_state = 0
-        q_tar = 0 
+        f_state = self.featurize(batch.state)
+        f_next_state = self.featurize(batch.next_state)
+        q_tar = np.array([q.predict(f_state) for q in self.q_functions]).transpose()
+        q_tar[np.where(batch.not_done < 1)[0]] = 0
 
 
         ########## You code ends here #########
@@ -117,7 +124,7 @@ class RBFAgent(object):
             # If a not present in the batch, skip and move to the next action
             if np.any(idx):
                 act_states = f_state[idx]
-                act_targets = q_tar[idx]
+                act_targets = q_tar[idx, a]
 
                 # Perform a single SGD step on the Q-function params to update the q_function corresponding to action a
                 self.q_functions[a].partial_fit(act_states, act_targets)

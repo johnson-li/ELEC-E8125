@@ -78,6 +78,7 @@ def main(cfg):
                 action = agent.get_action(state, eps)
                 if isinstance(action, np.ndarray): action = action.item()
                 
+            
             next_state, reward, done, _ = env.step(action)
             ep_reward += reward
 

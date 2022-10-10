@@ -215,3 +215,5 @@ cython_debug/
 **/*.pkl
 
 **/wandb
+
+**/results
