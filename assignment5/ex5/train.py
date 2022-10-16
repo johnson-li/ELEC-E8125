@@ -9,8 +9,8 @@ import gym
 import hydra
 import wandb
 import warnings
-warnings.filterwarnings("ignore", category=UserWarning) 
-warnings.filterwarnings("ignore", category=DeprecationWarning) 
+warnings.filterwarnings("ignore", category=UserWarning)
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 from agent import PG
 from common import helper as h
@@ -29,7 +29,7 @@ def train(agent, env):
     obs = env.reset()
 
     while not done:
-        # TODO: Task 1: finish the train loop, including 
+        # TODO: Task 1: finish the train loop, including
         #           1. Call agent.get_action to get action and log prob of the action
         #           2. Call env.step with the action (note: you need to convert the action into a numpy array -- use the function to_numpy for this)
         #              (Steps 1. and 2. you can also find from the 'test' function below)
@@ -38,11 +38,11 @@ def train(agent, env):
         #           5. Use the observation you receive from env.step to call agent.get_action for the next timestep
 
         ########### Your code starts here ###########
-        pass
-
-
-
-
+        action_mean, log_prob = agent.get_action(obs)
+        obs, reward, done, _ = env.step(action_mean.cpu().numpy().reshape((-1)))
+        agent.record(log_prob, reward)
+        reward_sum += reward
+        timesteps += 1
 
         ########## Your codes ends here. ##########
 
@@ -71,7 +71,7 @@ def test(agent, env, num_episodes=10):
             # the best action - there is no exploration at this point)
             action, _ = agent.get_action(obs, evaluation=True)
             obs, reward, done, info = env.step(to_numpy(action))
-            
+
             test_reward += reward
 
         total_test_reward += test_reward
@@ -94,7 +94,7 @@ def main(cfg):
     # Create folders if needed
     work_dir = Path().cwd()/'results'
     if cfg.save_model: h.make_dir(work_dir/"model")
-    if cfg.save_logging: 
+    if cfg.save_logging:
         h.make_dir(work_dir/"logging")
         L = logger.Logger() # create a simple logger to record stats
 
@@ -140,14 +140,14 @@ def main(cfg):
             # collect data and update the policy
             train_info = train(agent, env)
             train_info.update({'episodes': ep})
-            
+
             if cfg.use_wandb:
                 wandb.log(train_info)
             if cfg.save_logging:
                 L.log(**train_info)
             if (not cfg.silent) and (ep % 100 == 0):
                 print({"ep": ep, **train_info})
-        
+
         if cfg.save_model:
             agent.save(cfg.model_path)
 

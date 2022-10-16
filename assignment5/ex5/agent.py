@@ -6,6 +6,7 @@ from torch import nn
 from torch.distributions import Normal
 import numpy as np
 from common import helper as h
+from torch.distributions import Normal
 
 
 # Use CUDA for storing tensors / calculations if it's available
@@ -31,11 +32,14 @@ class Policy(nn.Module):
             layer_init(nn.Linear(64, action_dim), std=0.01),
         )
 
-        # TODO: Task 1: Implement actor_logstd as a torch tensor. Hint: when creating the torch tensor, remember to set the parameter device=device 
-        #   so the tensor is stored correctly on CUDA (if applicable) 
+        # TODO: Task 1: Implement actor_logstd as a torch tensor. Hint: when creating the torch tensor, remember to set the parameter device=device
+        #   so the tensor is stored correctly on CUDA (if applicable)
         # TODO: Task 2: Implement actor_logstd as a learnable parameter
         # Use log of std to make sure std doesn't become negative during training
-        self.actor_logstd = 0
+
+        actor_logstd = torch.full([action_dim], 1, dtype=torch.float64, device=device)
+        self.actor_logstd = torch.nn.Parameter(actor_logstd, requires_grad=True).to(device)
+
 
     # Do a forward pass to map state to action
     def forward(self, state):
@@ -49,8 +53,7 @@ class Policy(nn.Module):
         action_std = torch.exp(action_logstd)
 
         # TODO: Task 1: Create a Normal distribution with mean of 'action_mean' and standard deviation of 'action_logstd', and return the distribution
-        probs = 0
-
+        probs = Normal(action_mean, action_std)
         return probs
 
 
@@ -78,17 +81,29 @@ class PG(object):
                 .to(device).squeeze(-1) # shape: [batch_size,]
         rewards = torch.stack(self.rewards, dim=0).to(device).squeeze(-1) # shape [batch_size,]
         self.action_probs, self.rewards = [], [] # clean buffers
-        
+
         # TODO: Task 1: Implement the policy gradient
         ########## Your code starts here. ##########
         # Hints:
         #   1. compute discounted rewards (use the discount_rewards function offered in common.helper)
         #   2. compute the policy gradient loss
         #   3. update the parameters (backpropagate gradients, do the optimizer step, empty optimizer gradients afterwards so that gradients don't accumulate over updates)
-        pass
+        loss_list = []
+        discounts = np.array([self.gamma**i for i in range(len(rewards)+1)])
+        g_t = 0
+        g_t_list = []
+        for r in torch.flip(rewards, [0]):
+            g_t = r + self.gamma * g_t
+            g_t_list.insert(0, g_t)
+        g_t_list = torch.tensor(g_t_list, dtype=torch.float64, device=device)
+        g_t_list = (g_t_list - g_t_list.mean()) / g_t_list.std()
+        for log_prob, g_t in zip(torch.flip(action_probs, [0]), torch.flip(g_t_list, [0])):
+            loss_list.insert(0, - log_prob * (g_t - 0))
 
-
-
+        loss = torch.cat(loss_list).mean()
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
 
 
         ########## Your code ends here. ##########
@@ -108,19 +123,21 @@ class PG(object):
 
         # TODO: Task 1: Calculate action and its log_prob
         ########## Your code starts here. ###########
-        # Hint: 
+        # Hint:
         #   1. when evaluation=True, return mean, otherwise return samples from the distribution created in self.policy.forward() function.
         #   2. notice the shape of action and act_logprob.
-        
-        action = 0
-        act_logprob = 0
 
-
-
-
+        if evaluation:
+            action = self.policy.actor_mean(x)
+            act_logprob = 0
+        else:
+            probs = self.policy.forward(x)
+            sam = probs.sample()
+            action = sam
+            act_logprob = probs.log_prob(sam)
 
         ########## Your code ends here. ##########
-        
+
         if observation.ndim == 1: action = action[0]
 
         return action, act_logprob
