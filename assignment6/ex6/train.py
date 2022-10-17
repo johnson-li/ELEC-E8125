@@ -9,8 +9,8 @@ import gym
 import hydra
 import wandb
 import warnings
-warnings.filterwarnings("ignore", category=UserWarning) 
-warnings.filterwarnings("ignore", category=DeprecationWarning) 
+warnings.filterwarnings("ignore", category=UserWarning)
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 from pg_ac import PG
 from ddpg import DDPG
@@ -22,13 +22,13 @@ def to_numpy(tensor):
 
 # Policy training function
 def train(agent, env, max_episode_steps=1000):
-    # Run actual training        
+    # Run actual training
     reward_sum, timesteps, done, episode_timesteps = 0, 0, False, 0
     # Reset the environment and observe the initial state
     obs = env.reset()
     while not done:
         episode_timesteps += 1
-        
+
         # Sample action from policy
         action, act_logprob = agent.get_action(obs)
 
@@ -41,7 +41,7 @@ def train(agent, env, max_episode_steps=1000):
             agent.record(obs, act_logprob, reward, done_bool, next_obs)
         elif isinstance(agent, DDPG):
             # ignore the time truncated terminal signal
-            done_bool = float(done) if episode_timesteps < max_episode_steps else 0 
+            done_bool = float(done) if episode_timesteps < max_episode_steps else 0
             agent.record(obs, action, next_obs, reward, done_bool)
         else: raise ValueError
 
@@ -76,7 +76,7 @@ def test(agent, env, num_episode=10):
             # the best action - there is no exploration at this point)
             action, _ = agent.get_action(obs, evaluation=True)
             obs, reward, done, info = env.step(to_numpy(action))
-            
+
             test_reward += reward
 
         total_test_reward += test_reward
@@ -95,7 +95,7 @@ def main(cfg):
     # create folders if needed
     work_dir = Path().cwd()/'results'/f'{cfg.env_name}'
     if cfg.save_model: h.make_dir(work_dir/"model")
-    if cfg.save_logging: 
+    if cfg.save_logging:
         h.make_dir(work_dir/"logging")
         L = logger.Logger() # create a simple logger to record stats
 
@@ -150,7 +150,7 @@ def main(cfg):
             if (not cfg.silent) and (ep % 100 == 0):
                 print({"ep": ep, **train_info})
 
-        
+
         if cfg.save_model:
             agent.save(cfg.model_path)
 
@@ -161,7 +161,7 @@ def main(cfg):
 
         # load model
         agent.load(cfg.model_path)
-        
+
         print('Testing ...')
         test(agent, env, num_episode=10)
 

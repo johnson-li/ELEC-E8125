@@ -26,7 +26,8 @@ class Policy(nn.Module):
         )
         # TODO: Task 1: Implement actor_logstd as a learnable parameter
         # Use log of std to make sure std doesn't become negative during training
-        self.actor_logstd = 0
+        actor_logstd = torch.full([action_dim], 1, dtype=torch.float64, device=device)
+        self.actor_logstd = torch.nn.Parameter(actor_logstd, requires_grad=True).to(device)
 
 
     def forward(self, state):
@@ -40,7 +41,7 @@ class Policy(nn.Module):
         action_std = torch.exp(action_logstd)
 
         # TODO: Task 1: Create a Normal distribution with mean of 'action_mean' and standard deviation of 'action_logstd', and return the distribution
-        probs = 0
+        probs = Normal(action_mean, action_std)
 
         return probs
 
@@ -51,7 +52,7 @@ class Value(nn.Module):
             layer_init(nn.Linear(state_dim, 64)), nn.Tanh(),
             layer_init(nn.Linear(64, 64)), nn.Tanh(),
             layer_init(nn.Linear(64, 1)))
-    
+
     def forward(self, x):
         return self.value(x).squeeze(1) # output shape [batch,]
 
@@ -60,7 +61,9 @@ class PG(object):
     def __init__(self, state_dim, action_dim, lr, gamma):
         self.policy = Policy(state_dim, action_dim).to(device)
         self.value = Value(state_dim).to(device)
-        self.optimizer = torch.optim.Adam(list(self.policy.parameters())+ list(self.value.parameters()), 
+        self.optimizer = torch.optim.Adam(list(self.policy.parameters()),
+                                         lr=lr,)
+        self.optimizer2 = torch.optim.Adam(list(self.value.parameters()),
                                          lr=lr,)
 
         self.gamma = gamma
@@ -74,6 +77,7 @@ class PG(object):
 
 
     def update(self,):
+        torch.autograd.set_detect_anomaly(True)
         action_probs = torch.stack(self.action_probs, dim=0) \
                 .to(device).squeeze(-1)
         rewards = torch.stack(self.rewards, dim=0).to(device).squeeze(-1)
@@ -89,15 +93,34 @@ class PG(object):
         #        2. calculate the policy loss (similar to ex5) with advantage calculated from the value function. Normalise
         #           the advantage to zero mean and unit variance.
         #        3. update parameters of the policy and the value function jointly
+        discounts = torch.tensor([pow(self.gamma, i) for i in range(len(rewards))], dtype=torch.float64, device=device)
 
+        state_values = self.value(states)
+        next_state_values = self.value(next_states)
+        next_state_values[dones > 0] = 0
+        td_error = rewards + self.gamma * next_state_values
 
+        mse = nn.MSELoss()
+        loss_value = mse(state_values, td_error.detach()).mean()
 
+       	self.optimizer.zero_grad()
+        loss_value.backward()
+        self.optimizer.step()
 
+        delta = td_error.detach() - state_values.detach()
+        # returns = (returns - returns.mean()) / returns.std()
+        returns = delta * discounts
+        # returns = delta
+        loss_policy = (- action_probs * returns.detach()).mean()
+
+       	self.optimizer2.zero_grad()
+        loss_policy.backward()
+        self.optimizer2.step()
 
         ########## Your code ends here. ##########
 
         # if you want to log something in wandb, you can put them inside the {}, otherwise, just leave it empty.
-        return {}
+        return {"loss_policy": loss_policy.item(), "loss_value": loss_value.item(), "actor_logstd": self.policy.actor_logstd.item()}
 
 
     def get_action(self, observation, evaluation=False):
@@ -107,17 +130,20 @@ class PG(object):
 
         # TODO: Task 1
         ########## Your code starts here. ##########
-        # Hints: 1. the self.policy returns a normal distribution, check the PyTorch document to see 
+        # Hints: 1. the self.policy returns a normal distribution, check the PyTorch document to see
         #           how to calculate the log_prob of an action and how to sample.
         #        2. if evaluation, return mean, otherwise, return a sample
         #        3. the returned action and the act_logprob should be the torch.Tensors.
         #            Please always make sure the shape of variables is as you expected.
-        
-        action = 0
-        act_logprob = 0
-        
 
-
+        if evaluation:
+            action = self.policy.actor_mean(x)
+            act_logprob = 0
+        else:
+            probs = self.policy.forward(x)
+            sam = probs.sample()
+            action = sam
+            act_logprob = probs.log_prob(sam)
         ########## Your code ends here. ###########
 
         return action, act_logprob
@@ -132,6 +158,6 @@ class PG(object):
     # You can implement these if needed, following the previous exercises.
     def load(self, filepath):
         pass
-    
+
     def save(self, filepath):
         pass
