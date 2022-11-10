@@ -135,8 +135,9 @@ def main(cfg):
     if cfg.agent_name == "pg_ac":
         agent = PG(state_shape[0], action_dim, cfg.lr, cfg.gamma)
     else: # ddpg
-        agent = DDPG(state_shape, action_dim, max_action,
-                    cfg.lr, cfg.gamma, cfg.tau, cfg.batch_size, cfg.buffer_size)
+        # agent = DDPG(state_shape, action_dim, max_action,
+        #             cfg.lr, cfg.gamma, cfg.tau, cfg.batch_size, cfg.buffer_size)
+        agent = DDPG(state_shape, action_dim, max_action, 3e-4, .99, .005, 256, 1e6)
 
     if not cfg.testing: # training
         for ep in range(cfg.train_episodes + 1):

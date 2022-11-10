@@ -61,9 +61,9 @@ class PG(object):
     def __init__(self, state_dim, action_dim, lr, gamma):
         self.policy = Policy(state_dim, action_dim).to(device)
         self.value = Value(state_dim).to(device)
-        self.optimizer = torch.optim.Adam(list(self.policy.parameters()),
+        self.optimizer = torch.optim.Adam(list(self.value.parameters()),
                                          lr=lr,)
-        self.optimizer2 = torch.optim.Adam(list(self.value.parameters()),
+        self.optimizer2 = torch.optim.Adam(list(self.policy.parameters()),
                                          lr=lr,)
 
         self.gamma = gamma
@@ -93,7 +93,8 @@ class PG(object):
         #        2. calculate the policy loss (similar to ex5) with advantage calculated from the value function. Normalise
         #           the advantage to zero mean and unit variance.
         #        3. update parameters of the policy and the value function jointly
-        discounts = torch.tensor([pow(self.gamma, i) for i in range(len(rewards))], dtype=torch.float64, device=device)
+
+        # discounts = torch.tensor([pow(self.gamma, i) for i in range(len(rewards))], dtype=torch.float64, device=device)
 
         state_values = self.value(states)
         next_state_values = self.value(next_states)
@@ -101,20 +102,15 @@ class PG(object):
         td_error = rewards + self.gamma * next_state_values
 
         mse = nn.MSELoss()
-        loss_value = mse(state_values, td_error.detach()).mean()
+        loss_value = mse(state_values, td_error).mean()
 
-       	self.optimizer.zero_grad()
-        loss_value.backward()
-        self.optimizer.step()
-
-        delta = td_error.detach() - state_values.detach()
-        # returns = (returns - returns.mean()) / returns.std()
-        returns = delta * discounts
-        # returns = delta
-        loss_policy = (- action_probs * returns.detach()).mean()
+        delta = td_error - state_values
+        advantage = ((delta - delta.mean()) / delta.std()).reshape([-1, 1])
+        loss_policy = (torch.exp(-action_probs) * advantage.detach()).mean()
+        loss = loss_value + loss_policy
 
        	self.optimizer2.zero_grad()
-        loss_policy.backward()
+        loss.backward()
         self.optimizer2.step()
 
         ########## Your code ends here. ##########

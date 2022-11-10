@@ -10,6 +10,7 @@ from common.buffer import ReplayBuffer
 
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+# device = 'cpu'
 
 # Actor-critic agent
 class Policy(nn.Module):
@@ -53,16 +54,16 @@ class DDPG(object):
         self.q_optim = torch.optim.Adam(self.q.parameters(), lr=lr)
 
         self.buffer = ReplayBuffer(state_shape, action_dim, max_size=int(buffer_size))
-        
+
         self.batch_size = batch_size
         self.gamma = gamma
         self.tau = tau
-        
+
         # used to count number of transitions in a trajectory
         self.buffer_ptr = 0
-        self.buffer_head = 0 
+        self.buffer_head = 0
         self.random_transition = 5000 # collect 5k random data for better exploration
-    
+
 
     def update(self,):
         """ After collecting one trajectory, update the pi and q for #transition times: """
@@ -72,7 +73,7 @@ class DDPG(object):
         if self.buffer_ptr > self.random_transition: # update once have enough data
             for _ in range(update_iter):
                 info = self._update()
-        
+
         # update the buffer_head:
         self.buffer_head = self.buffer_ptr
         return info
@@ -87,15 +88,46 @@ class DDPG(object):
         #        2. compute the critic loss and update the q's parameters
         #        3. compute actor loss and update the pi's parameters
         #        4. update the target q and pi using h.soft_update_params() (See the DQN code)
-        
 
+        state_batch = batch.state
+        next_state_batch = batch.next_state
+        action_batch = batch.action
+        reward_batch = batch.reward.view(self.batch_size, -1)
+        not_done_batch = batch.not_done
+        non_final_mask = not_done_batch.nonzero()
+        non_final_next_states = next_state_batch[non_final_mask]
+
+        # pi => actor
+        # q => critic
+        next_actions = self.pi_target(next_state_batch).detach()
+        next_state_action_values = self.q_target(next_state_batch, next_actions).detach()
+        expected_state_action_values = next_state_action_values * self.gamma + reward_batch
+        state_action_values = self.q(state_batch, action_batch)
+
+        mse = nn.MSELoss()
+        loss_critic = mse(expected_state_action_values, state_action_values).mean()
+        self.q_optim.zero_grad()
+        loss_critic.backward()
+        self.q_optim.step()
+
+        loss_actor = -torch.mean(self.q(state_batch, self.pi(state_batch)))
+        self.pi_optim.zero_grad()
+        loss_actor.backward()
+        self.pi_optim.step()
+
+
+        self.soft_update(self.q_target, self.q, self.tau)
+        self.soft_update(self.pi_target, self.pi, self.tau)
 
         ########## Your code ends here. ##########
 
         # if you want to log something in wandb, you can put them inside the {}, otherwise, just leave it empty.
         return {}
 
-    
+    def soft_update(self, net_target, net, tau):
+        for target_param, param  in zip(net_target.parameters(), net.parameters()):
+            target_param.data.copy_(target_param.data * (1.0 - tau) + param.data * tau)
+
     @torch.no_grad()
     def get_action(self, observation, evaluation=False):
         if observation.ndim == 1: observation = observation[None] # add the batch dimension
@@ -105,7 +137,7 @@ class DDPG(object):
             action = torch.rand(self.action_dim)
         else:
             expl_noise = 0.1 * self.max_action # the stddev of the expl_noise if not evaluation
-            
+
             # TODO: Task 2
             ########## Your code starts here. ##########
             # Use the policy to calculate the action to execute
@@ -113,10 +145,13 @@ class DDPG(object):
             # Hint: Make sure the returned action's shape is correct.
             # pass
 
-
+            action = self.pi(torch.from_numpy(observation).float().to(device))
+            if not evaluation:
+                action += torch.randn_like(action) * expl_noise
 
             ########## Your code ends here. ##########
 
+        # action = action.reshape([-1, 1])
         return action, {} # just return a positional value
 
 
@@ -125,10 +160,10 @@ class DDPG(object):
         self.buffer_ptr += 1
         self.buffer.add(state, action, next_state, reward, done)
 
-    
+
     # You can implement these if needed, following the previous exercises.
     def load(self, filepath):
         pass
-    
+
     def save(self, filepath):
         pass
