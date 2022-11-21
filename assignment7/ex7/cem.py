@@ -10,10 +10,12 @@ import gym
 
 from common.env import make_env
 from common.simulator import SimulatorWrapper
+from torch.distributions.multivariate_normal import MultivariateNormal
+
 
 
 class CEM(object):
-    def __init__(self, 
+    def __init__(self,
                 model,
                 action_shape,
                 num_samples,
@@ -40,7 +42,7 @@ class CEM(object):
         o = self.model.reset()
         self.model.save_checkpoint()
 
-        
+
     def plan(self, obs, t0, eval_mode=False):
         if obs.ndim == 1: obs = obs[None] # add batch dim
         # initialize paramters
@@ -55,14 +57,19 @@ class CEM(object):
             for _ in range(self.iteration):
                 # TODO: Task 1 Implement CEM
                 ########## Your code starts here. ##########
-                # Hints: 
+                # Hints:
                 # 1. select actions, note plan horizon and number of samples and action dimensionality
                 # 2. evaluate actions by computing values for your actions
-                # use parallel(delayed(rollout_simulator)(model, action) for each sample 
+                # use parallel(delayed(rollout_simulator)(model, action) for each sample
                 # 3. select top actions (elite actions) in samples (highest returns)
                 # 4. compute new mean and std, note that we used momentum for mean
+                samples = np.random.normal(mean.reshape(-1), std.reshape(-1), [self.num_samples, self.plan_horizon * self.action_dim])
+                samples = samples.reshape(self.num_samples, self.plan_horizon, self.action_dim)
+                values = parallel(delayed(rollout_simulator)(model, samples[t]) for t in range(self.num_samples))
+                rank = np.argsort(values)[::-1]
+                actions = samples[rank]
 
-                _mean, _std = None, None # change this line 
+                _mean, _std = np.mean(actions, axis=0), np.std(actions, axis=0) # change this line
                 mean, std = self.momentum * mean + (1.0 - self.momentum) * _mean, _std
 
 
@@ -79,8 +86,8 @@ class CEM(object):
         o, r, d, _ = self.model.step(action)
         self.model.save_checkpoint()
 
-        return action   
-        
+        return action
+
 
 def rollout_simulator(model, traj):
     model.load_checkpoint()
@@ -102,7 +109,7 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('-use_wandb', type=int, default=1)
-    args = parser.parse_args()    
+    args = parser.parse_args()
     if args.use_wandb:
         import wandb
         import uuid
